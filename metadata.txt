@@ -13,8 +13,8 @@ email=ew.schippers@gmail.com
 about=Deze pluging bestaat uit een slider widget waarmee je gemakelijk door de lagen van topotijdreis navigeerd en deze in laad in QGIS. Met de 'vergelijk' functie word een tweede canvas aangemaakt waarop een tweede jaartal kan worden weergegeven. Alle overige projectlagen worden hierbij op zowel het tweede als het hoofdcanvas weergegeven.
         - zowel de topografiesche kaarten als de luchtfoto's zijn beschikbaar
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/Eschip98/TopoTijdReis2Qgis/issues
+repository=https://github.com/Eschip98/TopoTijdReis2Qgis
 # End of mandatory metadata
 
 # Recommended items:
@@ -26,7 +26,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=nederland,topotijdreis
 
-homepage=http://homepage
+homepage=https://github.com/Eschip98/TopoTijdReis2Qgis
 category=Web
 icon=icon.png
 # experimental flag
