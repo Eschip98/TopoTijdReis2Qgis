@@ -26,7 +26,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=nederland,topotijdreis
 
-homepage=https://github.com/Eschip98/TopoTijdReis2Qgis
+homepage=https://github.com/Eschip98/TopoTijdReis2Qgis/wiki/Online-handleiding-voor-TopoTijdreis2QGIS
 category=Web
 icon=icon.png
 # experimental flag
