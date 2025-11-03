@@ -25,12 +25,10 @@
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QLineEdit
 from .topotijdreis_dockwidget import SingelDockWidget, DoubelDockWidget
 import os.path
 from qgis.core import QgsProject, QgsRasterLayer, QgsMapThemeCollection
-from qgis.gui import QgsLayerTreeMapCanvasBridge
-
 
 class TopoTijdReis:
     """QGIS Plugin Implementation."""
@@ -60,7 +58,6 @@ class TopoTijdReis:
         self.dockwidget = None
         self.double_dockwidget = None
         self.secondCanvas = None
-        self.bridge_second = None
 
         QgsProject.instance().cleared.connect(self.onClosePlugin)
 
@@ -107,12 +104,21 @@ class TopoTijdReis:
             parent=self.iface.mainWindow()
         )
 
+        self.toolbar_search = QLineEdit()
+
+        self.toolbar_search.setMaximumWidth(150)
+        self.toolbar_search.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.toolbar_search.setPlaceholderText("Laad jaar uit Topotijdreis")
+        self.toolbar.addWidget(self.toolbar_search)
+        self.toolbar_search.returnPressed.connect(self.on_search_year)
+
     def unload(self):
         """Plugin verwijderen uit QGIS UI."""
         for action in self.actions:
             self.iface.removePluginWebMenu(self.tr(u'&TopTijdReis2QGIS'), action)
             self.iface.removeToolBarIcon(action)
         del self.toolbar
+        del self.toolbar_search
 
     def onClosePlugin(self):
         """Opruimen bij sluiten van de plugin."""
@@ -123,11 +129,12 @@ class TopoTijdReis:
                 self.project.removeMapLayer(lyr.id())
         root = self.project.layerTreeRoot()
 
-        # remove layergroups on close pluging
         for name in ['Topotijdreis', 'Topotijdreis_hoofdcanvas', 'Topotijdreis_tweedecanvas']:
             group = root.findGroup(name)
-            if group and group in root.children():
-                root.removeChildNode(group)
+            if group:
+                parent = group.parent()
+                if parent:
+                    parent.removeChildNode(group)
 
         if getattr(self, "active_mode", None) == "double":
             # disconnect the signels
@@ -137,9 +144,6 @@ class TopoTijdReis:
 
             # close the second map canvas
             self.iface.closeMapCanvas('Topotijdreis 2e kaartweergave')
-            if hasattr(self, "bridge_second") and self.bridge_second:
-                self.bridge_second.deleteLater()
-
             self.project.mapThemeCollection().removeMapTheme("Thema_tweedecanvas")
 
         if self.dockwidget is not None:
@@ -149,6 +153,20 @@ class TopoTijdReis:
                 pass
         self.pluginIsActive = False
         self.active_mode = None
+
+    def on_search_year(self):
+        """Wordt aangeroepen wanneer gebruiker op Enter drukt in de zoekbalk."""
+        text = self.toolbar_search.text().strip()
+        if not text.isdigit():
+            self.iface.messageBar().pushWarning("Topotijdreis", "Voer een geldig jaartal in.")
+            return
+        year = int(text)
+        try:
+            self.update_topotijdreis(year, "Topo")
+            self.toolbar_search.clear()
+        except Exception as e:
+            self.iface.messageBar().pushWarning("Topotijdreis", f"Fout bij laden: {e}")
+
 
     def selected_year(self):
         return self.dockwidget.slider.value()
@@ -270,6 +288,8 @@ class TopoTijdReis:
         if layer_group:
             self.project.addMapLayer(layer, False)
             layer_group.insertLayer(0, layer)
+        else:
+            self.project.addMapLayer(layer, True)
 
     def update_theme_second_canvas(self, canvas):
         self.update_theme("Thema_tweedecanvas", "Topotijdreis_hoofdcanvas"),
@@ -320,7 +340,6 @@ class TopoTijdReis:
         # add second canvas
         self.secondCanvas = self.iface.createNewMapCanvas('Topotijdreis 2e kaartweergave')
         self.secondCanvas.show()
-        self.bridge_second = QgsLayerTreeMapCanvasBridge(self.project.layerTreeRoot(), self.secondCanvas)
 
         topo_group = self.project.layerTreeRoot().insertGroup(1, 'Topotijdreis')
         main_group = topo_group.addGroup('Topotijdreis_hoofdcanvas')
@@ -377,3 +396,4 @@ class TopoTijdReis:
 
             self.update_theme("Thema_tweedecanvas", "Topotijdreis_hoofdcanvas")
             self.secondCanvas.setTheme("Thema_tweedecanvas")
+
