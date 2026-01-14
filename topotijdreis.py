@@ -87,7 +87,6 @@ class TopoTijdReis:
             action.setStatusTip(status_tip)
         if whats_this:
             action.setWhatsThis(whats_this)
-
         if add_to_toolbar:
             self.toolbar.addAction(action)
         if add_to_menu:
