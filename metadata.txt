@@ -4,13 +4,13 @@
 
 [general]
 name=TopTijdReis2QGIS
-qgisMinimumVersion=3.0
-description=Plugin om gemakelijk door kaartlagen van topotijdreis te navigeren en deze in te laden.
-version=0.2
+qgisMinimumVersion=3.30
+qgisMaximumVersion=3.99
+description=Plugin om gemakelijk door kaartlagen van topotijdreis te navigeren en deze op te halen in qgis.
 author=Eric Schippers
 email=ew.schippers@gmail.com
 
-about=Deze pluging bestaat uit een slider widget waarmee je gemakelijk door de lagen van topotijdreis navigeerd en deze in laad in QGIS. Met de 'vergelijk' functie word een tweede canvas aangemaakt waarop een tweede jaartal kan worden weergegeven. Alle overige projectlagen worden hierbij op zowel het tweede als het hoofdcanvas weergegeven.
+about=Deze pluging bestaat uit een slider widget waarmee je gemakelijk door de lagen van topotijdreis navigeerd en deze ophaald in QGIS. Met de 'vergelijk' functie word een tweede canvas aangemaakt waarop een topografische kaart van een ander jaar kan worden weergegeven. Alle overige projectlagen worden hierbij zowel op het tweede als het hoofdcanvas weergegeven.
         - zowel de topografiesche kaarten als de luchtfoto's zijn beschikbaar
 
 tracker=https://github.com/Eschip98/TopoTijdReis2Qgis/issues
@@ -18,18 +18,25 @@ repository=https://github.com/Eschip98/TopoTijdReis2Qgis
 # End of mandatory metadata
 
 # Recommended items:
-
 hasProcessingProvider=no
-# Uncomment the following line and add your changelog:
-# changelog=
+version=0.3
+changelog= 
+ Version 0.1 inital version
 
+ Verion 0.2 first stabel verion
+
+ Verion 0.3
+ - bug fix that caused the main canvas to be blank after closing doubel sliderwidget
+ - added a line edit along the icon in the qgis user interface to quickley load topo layer without starting a widget
+ - all layertree settings are now also taken over by the second canvas
+ - plugin activetie and settings are now saved in the qgis project
+ 
 # Tags are comma separated with spaces allowed
 tags=nederland,topotijdreis
 
 homepage=https://github.com/Eschip98/TopoTijdReis2Qgis/wiki/Online-handleiding-voor-TopoTijdreis2QGIS
 category=Web
 icon=icon.png
-# experimental flag
 experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
@@ -41,7 +48,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-# category=  Web
+#category=Web
 
 # If the plugin can run on QGIS Server.
 server=False
