@@ -23,12 +23,15 @@
 """
 # -*- coding: utf-8 -*-
 
+import os.path
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QLineEdit
-from .topotijdreis_dockwidget import SingelDockWidget, DoubelDockWidget
-import os.path
+from PyQt5.QtWidgets import QDockWidget
 from qgis.core import QgsProject, QgsRasterLayer, QgsMapThemeCollection
+from qgis.gui import QgsMapCanvas
+from .topotijdreis_dockwidget import SingelDockWidget, DoubelDockWidget
+
 
 class TopoTijdReis:
     """QGIS Plugin Implementation."""
@@ -53,13 +56,19 @@ class TopoTijdReis:
         self.toolbar.setObjectName(u'Topotijdreis')
 
         self.project = QgsProject.instance()
+        self.layertreeroot = self.project.layerTreeRoot()
         self.pluginIsActive = False
         self.active_mode = None
         self.dockwidget = None
         self.double_dockwidget = None
         self.secondCanvas = None
+        self.connected_project_signals = False
 
-        QgsProject.instance().cleared.connect(self.onClosePlugin)
+        #conect project signalen
+        self.project.writeProject.connect(self.onProjectSave)
+        self.project.readProject.connect(self.onProjectLoad)
+        self.project.cleared.connect(self.onClosePlugin)
+
 
     def tr(self, message):
         """Vertaling ophalen."""
@@ -108,7 +117,7 @@ class TopoTijdReis:
 
         self.toolbar_search.setMaximumWidth(150)
         self.toolbar_search.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.toolbar_search.setPlaceholderText("Laad jaar uit Topotijdreis")
+        self.toolbar_search.setPlaceholderText(self.tr('Zoek jaar in Topotijdreis'))
         self.toolbar.addWidget(self.toolbar_search)
         self.toolbar_search.returnPressed.connect(self.on_search_year)
 
@@ -127,10 +136,9 @@ class TopoTijdReis:
         for lyr in self.project.mapLayers().values():
             if lyr.name().startswith("Topotijdreis") or lyr.name().startswith("Luchtfototijdreis"):
                 self.project.removeMapLayer(lyr.id())
-        root = self.project.layerTreeRoot()
 
         for name in ['Topotijdreis', 'Topotijdreis_hoofdcanvas', 'Topotijdreis_tweedecanvas']:
-            group = root.findGroup(name)
+            group = self.layertreeroot.findGroup(name)
             if group:
                 parent = group.parent()
                 if parent:
@@ -138,12 +146,25 @@ class TopoTijdReis:
 
         if getattr(self, "active_mode", None) == "double":
             # disconnect the signels
-            self.project.layerRemoved.disconnect()
-            self.project.layersAdded.disconnect()
-            self.project.layerTreeRoot().layerOrderChanged.disconnect()
+            if self.connected_project_signals:
+                try:
+                    self.project.layerRemoved.disconnect(self.on_layers_tree_event)
+                    self.project.layersAdded.disconnect(self.on_layers_tree_event)
+                    self.layertreeroot.visibilityChanged.disconnect(self.on_layers_tree_event)
+                    self.layertreeroot.layerOrderChanged.connect(self.on_layers_tree_event)
+                except TypeError:
+                    pass
+                self.connected_project_signals = False
+
+            if self.double_dockwidget:
+                self.iface.removeDockWidget(self.double_dockwidget)
+                self.double_dockwidget.deleteLater()
+                self.double_dockwidget = None
 
             # close the second map canvas
-            self.iface.closeMapCanvas('Topotijdreis 2e kaartweergave')
+            if self.secondCanvas:
+                self.iface.closeMapCanvas('Topotijdreis 2e kaartweergave')
+                self.secondCanvas = None
             self.project.mapThemeCollection().removeMapTheme("Thema_tweedecanvas")
 
         if self.dockwidget is not None:
@@ -153,6 +174,60 @@ class TopoTijdReis:
                 pass
         self.pluginIsActive = False
         self.active_mode = None
+
+    def onProjectLoad(self):
+
+        # Single / double dockwidget
+        active, ok = self.project.readBoolEntry("topotijdreis", "active", False)
+        if not ok or not active:
+            return
+
+        mode, _ = self.project.readEntry("topotijdreis", "mode", None)
+        dock_area, _ = self.project.readNumEntry("topotijdreis", "dock_area", int(Qt.RightDockWidgetArea))
+
+        if mode == "single":
+            year, _ = self.project.readNumEntry("topotijdreis", "year", 0)
+            self.run_singel(on_load=True)
+            if year > 0:
+                self.dockwidget.slider.setValue(year)
+            self.iface.addDockWidget(Qt.DockWidgetArea(dock_area), self.dockwidget)
+
+        elif mode == "double":
+            year_main, _ = self.project.readNumEntry("topotijdreis", "year_main", 0)
+            year_second, _ = self.project.readNumEntry("topotijdreis", "year_second", 0)
+            self.run_double(on_load=True)
+            self.iface.addDockWidget(Qt.DockWidgetArea(dock_area), self.double_dockwidget)
+            if year_main > 0:
+                self.double_dockwidget.slider_main.setValue(year_main)
+            if year_second > 0:
+                self.double_dockwidget.slider_second.setValue(year_second)
+    def onProjectSave(self):
+
+        self.project.writeEntry("topotijdreis", "active", self.pluginIsActive)
+        self.project.writeEntry("topotijdreis", "mode", self.active_mode)
+
+        if self.active_mode == 'singel':
+            area = int(self.iface.mainWindow().dockWidgetArea(self.dockwidget))
+            self.project.writeEntry("topotijdreis", "dock_area", area)
+            self.project.writeEntry(
+                "topotijdreis",
+                "year",
+                self.dockwidget.slider.value()
+            )
+
+        if self.active_mode == 'double':
+            area = int(self.iface.mainWindow().dockWidgetArea(self.double_dockwidget))
+            self.project.writeEntry("topotijdreis", "dock_area", area)
+            self.project.writeEntry(
+                "topotijdreis",
+                "year_main",
+                self.double_dockwidget.slider_main.value()
+            )
+            self.project.writeEntry(
+                "topotijdreis",
+                "year_second",
+                self.double_dockwidget.slider_second.value()
+            )
 
     def on_search_year(self):
         """Wordt aangeroepen wanneer gebruiker op Enter drukt in de zoekbalk."""
@@ -167,23 +242,16 @@ class TopoTijdReis:
         except Exception as e:
             self.iface.messageBar().pushWarning("Topotijdreis", f"Fout bij laden: {e}")
 
+    def on_layers_tree_event(self, *args):
+        self.update_theme("Thema_tweedecanvas", "Topotijdreis_hoofdcanvas")
 
     def selected_year(self):
         return self.dockwidget.slider.value()
 
-    def remove_topotijdreis_layers(self, layer_group):
-        for child in layer_group.findLayers():
-            if "Topotijdreis" in child.name():
-                layer_group.removeChildNode(child)
-
     def update_theme(self, theme_name, exclude_group_name=None):
-
-        root = self.project.layerTreeRoot()
         theme_collection = self.project.mapThemeCollection()
-
         theme_record = QgsMapThemeCollection.MapThemeRecord()
 
-        #
         def collect_group_layers(group_node):
             ids = []
             for child in group_node.children():
@@ -193,10 +261,10 @@ class TopoTijdReis:
                     ids.extend(collect_group_layers(child))
             return ids
 
-        # add all layer to the theme exept the layer in the exclude group
+        # add all layer to the theme except the layer in the exclude group
         excluded_ids = []
         if exclude_group_name:
-            exclude_group = root.findGroup(exclude_group_name)
+            exclude_group = self.layertreeroot.findGroup(exclude_group_name)
             if exclude_group:
                 excluded_ids = collect_group_layers(exclude_group)
 
@@ -204,7 +272,7 @@ class TopoTijdReis:
             if layer.id() not in excluded_ids:
                 lr = QgsMapThemeCollection.MapThemeLayerRecord(layer)
 
-                node = root.findLayer(layer.id())
+                node = self.layertreeroot.findLayer(layer.id())
                 lr.isVisible = node.isVisible() if node else False
                 theme_record.addLayerRecord(lr)
 
@@ -291,16 +359,15 @@ class TopoTijdReis:
         else:
             self.project.addMapLayer(layer, True)
 
-    def update_theme_second_canvas(self, canvas):
-        self.update_theme("Thema_tweedecanvas", "Topotijdreis_hoofdcanvas"),
-        canvas.setTheme("Thema_tweedecanvas"),
-        canvas.refresh()
 
-    def run_singel(self):
+    def run_singel(self, on_load=False):
         self.active_mode = "single"
         self.iface.mapCanvas().refresh()
 
-        layer_group = self.project.layerTreeRoot().insertGroup(1, 'Topotijdreis')
+        if on_load is False:
+            layer_group = self.project.layerTreeRoot().insertGroup(1, 'Topotijdreis')
+        else:
+            layer_group = self.layertreeroot.findGroup('Topotijdreis')
 
         if not self.pluginIsActive:
             self.pluginIsActive = True
@@ -329,21 +396,30 @@ class TopoTijdReis:
                 )
             )
 
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
-            self.update_topotijdreis(self.selected_year(), self.dockwidget.comboBox.currentText(), layer_group)
+            if on_load is False:
+                self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
+                self.dockwidget.show()
+                self.update_topotijdreis(self.selected_year(), self.dockwidget.comboBox.currentText(), layer_group)
 
-    def run_double(self):
+    def run_double(self, on_load=False):
         self.active_mode = "double"
         self.iface.mapCanvas().refresh()
 
-        # add second canvas
-        self.secondCanvas = self.iface.createNewMapCanvas('Topotijdreis 2e kaartweergave')
-        self.secondCanvas.show()
 
-        topo_group = self.project.layerTreeRoot().insertGroup(1, 'Topotijdreis')
-        main_group = topo_group.addGroup('Topotijdreis_hoofdcanvas')
-        second_group = topo_group.addGroup('Topotijdreis_tweedecanvas')
+        # add second canvas
+        if on_load is False:
+            self.secondCanvas = self.iface.createNewMapCanvas('Topotijdreis 2e kaartweergave')
+            self.secondCanvas.show()
+            topo_group = self.project.layerTreeRoot().insertGroup(1, 'Topotijdreis')
+            main_group = topo_group.addGroup('Topotijdreis_hoofdcanvas')
+            second_group = topo_group.addGroup('Topotijdreis_tweedecanvas')
+        else:
+            if self.secondCanvas is None:
+                for dw in self.iface.mainWindow().findChildren(QDockWidget):
+                    if dw.windowTitle() == "Topotijdreis 2e kaartweergave":
+                        canvases = dw.findChildren(QgsMapCanvas)
+                        if canvases:
+                            self.secondCanvas = canvases[0]
 
         if not self.pluginIsActive:
             self.pluginIsActive = True
@@ -353,6 +429,7 @@ class TopoTijdReis:
             # double dockwidget and conect singnals
             self.double_dockwidget = DoubelDockWidget()
             self.double_dockwidget.closingPlugin.connect(self.onClosePlugin)
+
 
             self.double_dockwidget.spinBox_main.valueChanged.connect(self.double_dockwidget.slider_main.setValue)
             self.double_dockwidget.spinBox_second.valueChanged.connect(self.double_dockwidget.slider_second.setValue)
@@ -364,7 +441,7 @@ class TopoTijdReis:
                         jaar,
                         self.double_dockwidget.comboBox.currentText(),
                         self.project.layerTreeRoot().findGroup("Topotijdreis_hoofdcanvas")
-                    ),
+                    )
                 )
             )
 
@@ -375,25 +452,24 @@ class TopoTijdReis:
                         jaar,
                         self.double_dockwidget.comboBox.currentText(),
                         self.project.layerTreeRoot().findGroup("Topotijdreis_tweedecanvas")
-                    ),
+                    )
                 )
             )
 
-            # concet upadate_secondcanvas map theme to signals
-            self.project.layerRemoved.connect(
-                lambda *args: self.update_theme_second_canvas(canvas=self.secondCanvas))
-            self.project.layersAdded.connect(
-                lambda *args: self.update_theme_second_canvas(canvas=self.secondCanvas))
-            self.project.layerTreeRoot().layerOrderChanged.connect(
-                lambda *args: self.update_theme_second_canvas(canvas=self.secondCanvas))
+            if not self.connected_project_signals:
+                self.project.layerRemoved.connect(self.on_layers_tree_event)
+                self.project.layersAdded.connect(self.on_layers_tree_event)
+                self.layertreeroot.visibilityChanged.connect(self.on_layers_tree_event)
+                self.layertreeroot.layerOrderChanged.connect(self.on_layers_tree_event)
+                self.connected_project_signals = True
 
             # add dockwidget
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.double_dockwidget)
-            self.double_dockwidget.show()
+            if on_load is False:
+                self.iface.addDockWidget(Qt.RightDockWidgetArea, self.double_dockwidget)
+                self.double_dockwidget.show()
 
-            self.update_topotijdreis(self.double_dockwidget.slider_main.value(), combobox_setting, main_group)
-            self.update_topotijdreis(self.double_dockwidget.slider_second.value(), combobox_setting, second_group)
+                self.update_topotijdreis(self.double_dockwidget.slider_main.value(), combobox_setting, main_group)
+                self.update_topotijdreis(self.double_dockwidget.slider_second.value(), combobox_setting, second_group)
 
-            self.update_theme("Thema_tweedecanvas", "Topotijdreis_hoofdcanvas")
-            self.secondCanvas.setTheme("Thema_tweedecanvas")
-
+                self.update_theme("Thema_tweedecanvas", "Topotijdreis_hoofdcanvas")
+                self.secondCanvas.setTheme("Thema_tweedecanvas")
