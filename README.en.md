@@ -9,7 +9,7 @@ Both topographic maps and aerial photos are available.
 
 ##Installation
 
-You need QGIS version >3.0. In the plugin menu (Manage and Install Plugins…) search for "TopoTijdReis2Qgis" and select it.
+You need QGIS version >3.30. In the plugin menu (Manage and Install Plugins…) search for "TopoTijdReis2Qgis" and select it.
 
 Adding a topographic map for a single year
 
