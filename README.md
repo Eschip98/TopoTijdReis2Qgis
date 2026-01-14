@@ -7,7 +7,7 @@ Met de 'vergelijk' functie word een tweede canvas aangemaakt waarop een tweede j
 
 ## Instalatie
 
-Je hebt QGIS versie >3.0 nodig. Zoek in het pluging-menu (Plugins beheren en instaleren...) naar "TopoTijdReis2Qgis" en selecteer deze:
+Je hebt QGIS versie >3.30 nodig. Zoek in het pluging-menu (Plugins beheren en instaleren...) naar "TopoTijdReis2Qgis" en selecteer deze:
 
 ## Topokaart enkele jaar toevoegen
 Om de topografische kaart van een enkle jaar in te laden type in het tekstbalk langs het plugingteken een jaartal en druk op enter. de topografische kaart van dat jaar in topotijdreis zal in het project worden geladen. de laag krijgt de naam "Topotijdreis 'jaartal'" 
