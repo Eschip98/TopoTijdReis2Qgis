@@ -35,7 +35,7 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 FORM_CLASS_DOUBLE, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'topotijdreis_dockwidget_double.ui'))
 
-max_year = datetime.now().year - 1
+max_year = datetime.now().year - 2
 
 
 class CommonDockLogic:
