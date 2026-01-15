@@ -19,18 +19,21 @@ repository=https://github.com/Eschip98/TopoTijdReis2Qgis
 
 # Recommended items:
 hasProcessingProvider=no
-version=0.3
+version=0.3.1
 changelog= 
  Version 0.1 inital version
 
- Verion 0.2 first stabel verion
+ Version 0.2 first stabel verion
 
- Verion 0.3
+ Version 0.3
  - bug fix that caused the main canvas to be blank after closing doubel sliderwidget
  - added a line edit along the icon in the qgis user interface to quickley load topo layer without starting a widget
  - all layertree settings are now also taken over by the second canvas
  - plugin activetie and settings are now saved in the qgis project
- 
+
+ Version 0.3.1
+ - changed max year ot the widgets to now -2 years to prevent invalid layers on the start of a new year
+
 # Tags are comma separated with spaces allowed
 tags=nederland,topotijdreis
 
